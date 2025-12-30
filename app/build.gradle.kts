@@ -83,15 +83,17 @@ android {
             val apkName = "FastCodeScan-${variant.versionName}-${variant.buildType.name}-${buildTime}.apk"
             output.outputFileName = apkName
 
-            // 构建完成后移动 APK 到 releases 目录
-            variant.assembleProvider.get().doLast {
-                val releaseDir = rootProject.file("releases")
-                if (!releaseDir.exists()) releaseDir.mkdirs()
-                val srcFile = output.outputFile
-                val destFile = File(releaseDir, apkName)
-                if (!destFile.exists()) {
-                    srcFile.renameTo(destFile)
-                    println("APK moved to: ${destFile.absolutePath}")
+            // 只对 release 构建移动 APK 到 releases 目录
+            if (variant.buildType.name == "release") {
+                variant.assembleProvider.get().doLast {
+                    val releaseDir = rootProject.file("releases")
+                    if (!releaseDir.exists()) releaseDir.mkdirs()
+                    val srcFile = output.outputFile
+                    val destFile = File(releaseDir, apkName)
+                    if (!destFile.exists()) {
+                        srcFile.renameTo(destFile)
+                        println("APK moved to: ${destFile.absolutePath}")
+                    }
                 }
             }
         }

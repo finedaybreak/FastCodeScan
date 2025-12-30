@@ -36,7 +36,11 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -190,8 +194,18 @@ private fun CameraPreview(
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
 
-    DisposableEffect(Unit) {
+    // Track lifecycle resume to trigger camera rebind
+    var resumeCounter by remember { mutableIntStateOf(0) }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                resumeCounter++
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
             cameraExecutor.shutdown()
         }
     }
@@ -204,35 +218,38 @@ private fun CameraPreview(
         },
         modifier = modifier,
         update = { previewView ->
-            val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
-            cameraProviderFuture.addListener({
-                val cameraProvider = cameraProviderFuture.get()
+            // Reference resumeCounter to trigger update on lifecycle resume
+            resumeCounter.let { _ ->
+                val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
+                cameraProviderFuture.addListener({
+                    val cameraProvider = cameraProviderFuture.get()
 
-                val preview = Preview.Builder().build().also {
-                    it.surfaceProvider = previewView.surfaceProvider
-                }
-
-                val imageAnalysis = ImageAnalysis.Builder()
-                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                    .build()
-                    .also {
-                        it.setAnalyzer(cameraExecutor, analyzer)
+                    val preview = Preview.Builder().build().also {
+                        it.surfaceProvider = previewView.surfaceProvider
                     }
 
-                val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+                    val imageAnalysis = ImageAnalysis.Builder()
+                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                        .build()
+                        .also {
+                            it.setAnalyzer(cameraExecutor, analyzer)
+                        }
 
-                try {
-                    cameraProvider.unbindAll()
-                    cameraProvider.bindToLifecycle(
-                        lifecycleOwner,
-                        cameraSelector,
-                        preview,
-                        imageAnalysis
-                    )
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }, ContextCompat.getMainExecutor(context))
+                    val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+
+                    try {
+                        cameraProvider.unbindAll()
+                        cameraProvider.bindToLifecycle(
+                            lifecycleOwner,
+                            cameraSelector,
+                            preview,
+                            imageAnalysis
+                        )
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }, ContextCompat.getMainExecutor(context))
+            }
         }
     )
 }
