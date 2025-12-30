@@ -1,3 +1,7 @@
+import java.util.Properties
+import java.text.SimpleDateFormat
+import java.util.Date
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -6,27 +10,59 @@ plugins {
     alias(libs.plugins.hilt)
 }
 
+val localProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        load(localPropertiesFile.inputStream())
+    }
+}
+
+// 从 versionName 自动生成 versionCode
+// "1.2.3" -> 10203, "2.0.0" -> 20000
+fun generateVersionCode(versionName: String): Int {
+    val parts = versionName.split(".").map { it.toIntOrNull() ?: 0 }
+    val major = parts.getOrElse(0) { 0 }
+    val minor = parts.getOrElse(1) { 0 }
+    val patch = parts.getOrElse(2) { 0 }
+    return major * 10000 + minor * 100 + patch
+}
+
+val appVersionName = "1.0.0"
+val appVersionCode = generateVersionCode(appVersionName)
+val buildTime: String = SimpleDateFormat("yyyyMMdd_HHmmss").format(Date())
+
 android {
     namespace = "com.wongyichen.fastcodescan"
     compileSdk = 35
+
+    signingConfigs {
+        create("release") {
+            storeFile = file(localProperties.getProperty("RELEASE_STORE_FILE", ""))
+            storePassword = localProperties.getProperty("RELEASE_STORE_PASSWORD", "")
+            keyAlias = localProperties.getProperty("RELEASE_KEY_ALIAS", "")
+            keyPassword = localProperties.getProperty("RELEASE_KEY_PASSWORD", "")
+        }
+    }
 
     defaultConfig {
         applicationId = "com.wongyichen.fastcodescan"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = appVersionCode
+        versionName = appVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {
@@ -38,6 +74,27 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+
+    applicationVariants.all {
+        val variant = this
+        variant.outputs.all {
+            val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            val apkName = "FastCodeScan-${variant.versionName}-${variant.buildType.name}-${buildTime}.apk"
+            output.outputFileName = apkName
+
+            // 构建完成后移动 APK 到 releases 目录
+            variant.assembleProvider.get().doLast {
+                val releaseDir = rootProject.file("releases")
+                if (!releaseDir.exists()) releaseDir.mkdirs()
+                val srcFile = output.outputFile
+                val destFile = File(releaseDir, apkName)
+                if (!destFile.exists()) {
+                    srcFile.renameTo(destFile)
+                    println("APK moved to: ${destFile.absolutePath}")
+                }
+            }
+        }
     }
 }
 
