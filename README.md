@@ -10,6 +10,9 @@
 
 A fast, modern Android app for scanning and generating QR codes and barcodes.
 
+
+Download FastCodeScan APK v1.0.0 [here](https://github.com/finedaybreak/FastCodeScan/releases/download/v1.0.0/FastCodeScan-1.0.0-release-20251231.apk)
+
 ## Snapshots
 
 <div style="display: flex; gap: 20px"> 
