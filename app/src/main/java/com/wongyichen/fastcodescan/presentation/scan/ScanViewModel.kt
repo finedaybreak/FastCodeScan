@@ -53,6 +53,8 @@ class ScanViewModel @Inject constructor(
     fun dismissResult() {
         _uiState.update {
             it.copy(
+                scanResult = null,
+                isScanning = true,
                 showResultDialog = false
             )
         }

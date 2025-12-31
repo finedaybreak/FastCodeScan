@@ -5,9 +5,9 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.graphics.Bitmap
 import android.widget.Toast
+import com.wongyichen.fastcodescan.utils.saveBitmapToGallery
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,12 +21,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material3.Icon
@@ -265,17 +267,22 @@ private fun RecordDetailDialog(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                Text(
-                    text = record.content,
-                    style = MaterialTheme.typography.bodyMedium,
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .heightIn(max = 100.dp)
                         .background(
                             MaterialTheme.colorScheme.surfaceVariant,
                             RoundedCornerShape(8.dp)
                         )
+                        .verticalScroll(rememberScrollState())
                         .padding(12.dp)
-                )
+                ) {
+                    Text(
+                        text = record.content,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -283,6 +290,16 @@ private fun RecordDetailDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
                 ) {
+                    if (bitmap != null) {
+                        AppButton(
+                            text = "Save",
+                            onClick = { saveBitmapToGallery(context, bitmap) },
+                            variant = ButtonVariant.Outline
+                        )
+
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+
                     AppButton(
                         text = "Copy",
                         onClick = {
